@@ -1,0 +1,361 @@
+---
+- hosts: host
+  become: false
+  gather_facts: false
+   
+  vars:
+    site_name: usnv
+    sae_provider: nafta
+    sae_tenant: usnv
+    catalog: usnv-catalog
+    log_path: /var/log/ncs
+    java_log: ncs-java-vm.log
+    stitch_deletion_delay_minutes: 30     #minutes
+    service_deletion_delay_minutes: 5     #minutes
+    endpoint_deletion_delay_minutes: 10   #minutes
+
+  tasks:
+  - name: set to ncs_cli -u admin model
+    set_fact:
+      ansible_port: 2024
+    tags:
+      - stitching
+      - service
+      - endpoint
+      - catalog
+      - nf-dep
+      - nsd
+      - vnfd
+      - external
+
+  ############################################################################
+  - name: delete stitching service
+    raw: |
+      configure
+      delete sae-site {{ site_name }} sae-provider {{ sae_provider }} sae-tenant {{ sae_tenant }} stitching-service
+      commit
+      exit
+
+    register: file
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+    tags:
+      - stitching
+
+  - name: show it
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - stitching
+
+  - name: wait sometime
+    pause:
+      minutes: "{{ stitch_deletion_delay_minutes|int }}"
+    tags:
+      - stitching
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - stitching
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 80
+    delay: 300         # second
+    tags:
+      - stitching
+
+  #  wait_for:
+  #    path: /var/log/ncs/ncs-java-vm.log
+  #    search_regex: redeploy successful
+
+  #  register: file
+  #  tags:
+  #    - stitching
+  #  failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  #- name: debug waiting
+  #  debug: var=file
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete service-chain
+    raw: |
+      configure
+      delete sae-site {{ site_name }} sae-provider {{ sae_provider }} sae-tenant {{ sae_tenant }} service-chain
+      commit
+      exit
+
+    register: file
+    tags:
+      - service
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show service chain 
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - service
+
+  - name: wait sometime
+    pause:
+      minutes: "{{ service_deletion_delay_minutes|int }}"
+    tags:
+      - service
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - service
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 60
+    tags:
+      - service
+
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete endpoint gateway
+    raw: |
+      configure
+      delete sae-site {{ site_name }} sae-provider {{ sae_provider }} sae-tenant {{ sae_tenant }} endpoint-gateway-vnf
+      commit
+      exit
+
+    register: file
+    tags:
+      - endpoint
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show endpoint deletion
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - endpoint
+
+  - name: wait sometime
+    pause:
+      minutes: "{{ endpoint_deletion_delay_minutes|int }}"
+    tags:
+      - endpoint
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - endpoint
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 60
+    tags:
+      - endpoint
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete cfp catalog
+    raw: |
+      configure
+      delete cfp-catalog catalog {{ catalog }} networkservice-deployment
+      commit
+      exit
+
+    register: file
+    tags:
+      - catalog
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show it
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - catalog
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - catalog
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 30
+    tags:
+      - catalog
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete nf-dep
+    raw: |
+      configure
+      delete cfp-catalog nf-deployments vnfd
+      commit
+      exit
+
+    register: file
+    tags:
+      - nf-dep
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show it
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - nf-dep
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - nf-dep
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 5
+    tags:
+      - nf-dep
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete nsd
+    raw: |
+      configure
+      delete nfv nsd
+      commit
+      exit
+
+    register: file
+    tags:
+      - nsd
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show it
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - nsd
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - nsd
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 5
+    tags:
+      - nsd
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete vnfd
+    raw: |
+      configure
+      delete nfv vnfd
+      commit
+      exit
+
+    register: file
+    tags:
+      - vnfd
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show it
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - vnfd
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - vnfd
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 5
+    tags:
+      - vnfd
+
+  ############################################################################
+  - name: set to ncs_cli model
+    set_fact:
+      ansible_port: 2024
+
+  - name: delete external
+    raw: |
+      configure
+      delete sae-site {{ site_name }} sae-provider {{ sae_provider }} sae-tenant {{ sae_tenant }} external-end-point
+      commit
+      exit
+
+    register: file
+    tags:
+      - external
+    failed_when: "file.stdout is defined and 'error' in file.stdout"
+
+  - name: show it
+    debug:
+      msg: "{{ file }}"
+    tags:
+      - external
+
+  - name: set to linux model
+    set_fact:
+      ansible_port: 22
+    tags:
+      - external
+
+  - name: loop to see if deletion is completed every 5 minutes
+    command: find {{ log_path }} -type f -mmin -5
+    register: file
+    until:  file.stdout_lines is not search(java_log)
+    retries: 60
+    delay: 5
+    tags:
+      - external
+
