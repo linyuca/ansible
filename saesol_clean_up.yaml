@@ -1,5 +1,5 @@
 ---
-- hosts: host
+- hosts: nso
   become: false
   gather_facts: false
    
@@ -10,9 +10,10 @@
     catalog: usnv-catalog
     log_path: /var/log/ncs
     java_log: ncs-java-vm.log
-    stitch_deletion_delay_minutes: 30     #minutes
-    service_deletion_delay_minutes: 5     #minutes
-    endpoint_deletion_delay_minutes: 10   #minutes
+    commit_success: Commit complete
+    stitch_deletion_delay_minutes: 5     #minutes
+    service_deletion_delay_minutes: 3    #minutes
+    endpoint_deletion_delay_minutes: 2   #minutes
 
   tasks:
   - name: set to ncs_cli -u admin model
@@ -50,6 +51,7 @@
   - name: wait sometime
     pause:
       minutes: "{{ stitch_deletion_delay_minutes|int }}"
+    when: file.stdout_lines is search(commit_success)
     tags:
       - stitching
 
@@ -59,12 +61,12 @@
     tags:
       - stitching
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 2 minutes
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 80
-    delay: 300         # second
+    delay: 120         # second
     tags:
       - stitching
 
@@ -106,6 +108,7 @@
   - name: wait sometime
     pause:
       minutes: "{{ service_deletion_delay_minutes|int }}"
+    when: file.stdout_lines is search(commit_success)
     tags:
       - service
 
@@ -115,8 +118,8 @@
     tags:
       - service
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 60
@@ -151,6 +154,7 @@
   - name: wait sometime
     pause:
       minutes: "{{ endpoint_deletion_delay_minutes|int }}"
+    when: file.stdout_lines is search(commit_success)
     tags:
       - endpoint
 
@@ -160,8 +164,8 @@
     tags:
       - endpoint
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 60
@@ -198,12 +202,12 @@
     tags:
       - catalog
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 60
-    delay: 30
+    delay: 60
     tags:
       - catalog
 
@@ -236,12 +240,12 @@
     tags:
       - nf-dep
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 60
-    delay: 5
+    delay: 60
     tags:
       - nf-dep
 
@@ -274,12 +278,12 @@
     tags:
       - nsd
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 60
-    delay: 5
+    delay: 60
     tags:
       - nsd
 
@@ -312,12 +316,12 @@
     tags:
       - vnfd
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
     retries: 60
-    delay: 5
+    delay: 60
     tags:
       - vnfd
 
@@ -350,12 +354,12 @@
     tags:
       - external
 
-  - name: loop to see if deletion is completed every 5 minutes
-    command: find {{ log_path }} -type f -mmin -5
+  - name: loop to see if deletion is completed every 1 minute
+    command: find {{ log_path }} -type f -mmin -2
     register: file
     until:  file.stdout_lines is not search(java_log)
-    retries: 60
-    delay: 5
+    retries: 180
+    delay: 60
     tags:
       - external
 
